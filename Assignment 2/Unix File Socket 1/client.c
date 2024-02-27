@@ -39,7 +39,7 @@ main ()
       if (strcmp (bit, "end") == 0)
 	{
 	  printf ("\nClient is terminated...\n");
-	  write (sockfd, "end", strlen (bit));
+	  write (sockfd, bit, strlen (bit)+1);
 	  close (sockfd);
 	  exit (1);
 	}

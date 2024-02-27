@@ -61,12 +61,13 @@ main ()
 	    n++;
 	}
       if (n % 2 == 1)
-	bit[i] = '1';
+	bit[i++] = '1';
       else
-	bit[i] = '0';
+	bit[i++] = '0';
+      bit[i] = '\0';
 
       printf ("Server is sending %s to Client...\n", bit);
-      write (client_sockfd, bit, strlen (bit));
+      write (client_sockfd, bit, strlen (bit) + 1);
     }
 
   return 0;
