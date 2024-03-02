@@ -1,86 +1,70 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
 #include<sys/types.h>
 #include<sys/ipc.h>
 #include<sys/msg.h>
+#include<stdio.h>
+#include<string.h>
+#include<stdlib.h>
 
 #define MAX 100
 
-struct message_struct
-{
-  long int message_id;
-  char message_body[MAX];
+struct message_struct{
+	long int message_type;
+	char message_body[MAX];
 };
 
-char name[MAX][MAX];
-
-void
-sort (int arrSize)
-{
-  int i, j;
-  for (i = 0; i < arrSize - 1; i++)
-    {
-      for (j = i + 1; j < arrSize; j++)
-	{
-	  if (strcmp (name[j], name[i]) < 0)
-	    {
-	      char temp[MAX];
-	      strcpy (temp, name[i]);
-	      strcpy (name[i], name[j]);
-	      strcpy (name[j], temp);
-	    }
+void sort(char name[MAX][MAX],int n){
+	int i,j;
+	for(i=0;i<n-1;i++){
+		for(j=i+1;j<n;j++){
+			if (strcmp(name[j],name[i])<0){
+				char temp[MAX];
+				strcpy(temp,name[i]);
+				strcpy(name[i],name[j]);
+				strcpy(name[j],temp);
+			}
+		}
 	}
-    }
 }
 
-int
-main ()
-{
-  int running = 1;
-  int msgid = msgget ((key_t) 2832, 0666 | IPC_CREAT);
-  if (msgid == -1)
-    {
-      perror ("msgget failed");
-      exit (EXIT_FAILURE);
-    }
-  int i = 0;
-  while (running == 1)
-    {
-      struct message_struct message;
-      msgrcv (msgid, (void *) &message, sizeof (message.message_body), 1, 0);
-      if (strcmp (message.message_body, "end") == 0)
-	{
-	  running = 0;
-	  break;
+int main(){
+	key_t key=ftok("msg_key",2832);
+	int msgid=msgget(key,0666|IPC_CREAT);
+	if (msgid==-1){
+		printf("Cannot connect to Server...\n");
+		exit(1);
 	}
-      strcpy (name[i++], message.message_body);
-      printf ("Name received : %s\n", message.message_body);
-    }
-
-  sort (i);
-  printf ("\nNames Sorted\n");
-
-  msgid = msgget ((key_t) 28321, 0666 | IPC_CREAT);
-  if (msgid == -1)
-    {
-      perror ("msgget failed");
-      exit (EXIT_FAILURE);
-    }
-
-  int j;
-  for (j = 0; j < i; j++)
-    {
-      struct message_struct message;
-      strcpy (message.message_body, name[j]);
-      message.message_id = 3;
-      msgsnd (msgid, (void *) &message, sizeof (message.message_body), 0);
-    }
-  struct message_struct message;
-  strcpy (message.message_body, "end");
-  message.message_id = 3;
-  msgsnd (msgid, (void *) &message, sizeof (message.message_body), 0);
-  printf ("\nProcess 2 is Terminated...\n");
-
-  return 0;
+	
+	char name[MAX][MAX];
+	int i=0;
+	printf("Waiting for Client...\n\n");
+	while(1){
+		struct message_struct nameinput;
+		msgrcv(msgid,(void*)&nameinput,MAX,1,0);
+		if (strcmp(nameinput.message_body,"end")==0)
+			break;
+		strcpy(name[i++],nameinput.message_body);
+		printf("Received name : %s\n",nameinput.message_body);
+	}
+	
+	sort(name,i);
+	
+	msgid=msgget((key_t)28321,0666|IPC_CREAT);
+	if (msgid==-1){
+		printf("Cannot connect to Server...\n");
+		exit(1);
+	}
+	int j;
+	for(j=0;j<i;j++){
+		struct message_struct nameoutput;
+		nameoutput.message_type=1;
+		strcpy(nameoutput.message_body,name[j]);
+		msgsnd(msgid,(void*)&nameoutput,MAX,0);
+	}
+	
+	struct message_struct nameoutput;
+	nameoutput.message_type=1;
+	strcpy(nameoutput.message_body,"end");
+	msgsnd(msgid,(void*)&nameoutput,MAX,0);
+	
+	return 0;
 }
