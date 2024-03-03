@@ -1,13 +1,14 @@
 #include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+
 #include<sys/types.h>
 #include<sys/socket.h>
-#include<string.h>
-#include<stdlib.h>
 
 #include<unistd.h>
 #include<fcntl.h>
-#include<sys/stat.h>
 #include<sys/un.h>
+#include<sys/stat.h>
 
 #define MAX 100
 
@@ -19,16 +20,12 @@ main ()
   address.sun_family = AF_UNIX;
   strcpy (address.sun_path, "socket_server");
   int len = sizeof (address);
-
-  printf ("Client is running...\n");
-
   int result = connect (sockfd, (struct sockaddr *) &address, len);
   if (result == -1)
     {
-      printf ("\nCannot connect to Server\n");
+      printf ("Cannot connect to the Server...\n");
       exit (1);
     }
-
   while (1)
     {
       char bit[MAX];
@@ -36,23 +33,17 @@ main ()
       scanf ("%s", bit);
       getchar ();
 
-      if (strcmp (bit, "end") == 0)
-	{
-	  printf ("\nClient is terminated...\n");
-	  write (sockfd, bit, strlen (bit)+1);
-	  close (sockfd);
-	  exit (1);
-	}
-
-      printf ("\nClient is sending %s to the Server\n", bit);
       write (sockfd, bit, strlen (bit) + 1);
 
-      printf ("\nWaiting for Server response\n");
-
+      if (strcmp (bit, "end") == 0)
+	{
+	  printf ("Client is terminated...\n\n");
+	  break;
+	}
+      printf ("%s is sent to the server\n", bit);
       read (sockfd, bit, MAX);
-
-      printf ("\nServer sent %s\n", bit);
+      printf ("%s is received from the Server\n\n", bit);
     }
-
+  close (sockfd);
   return 0;
 }
