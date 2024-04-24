@@ -2,13 +2,13 @@
 #include<string.h>
 #include<stdlib.h>
 
+#include<netinet/in.h>
+#include<arpa/inet.h>
+
 #include<sys/types.h>
 #include<sys/socket.h>
 
 #include<unistd.h>
-
-#include<netinet/in.h>
-#include<arpa/inet.h>
 
 #define MAX 100
 
@@ -16,7 +16,7 @@ int
 main (int ac, char **av)
 {
   struct sockaddr_in saddr;
-  char sip_addr[MAX], bit[MAX], ans[MAX];
+  char sip_addr[MAX], ip[MAX], ans[MAX];
   if (ac == 1)
     strcpy (sip_addr, "127.0.0.1");
   else
@@ -32,26 +32,13 @@ main (int ac, char **av)
       close (sid);
       exit (1);
     }
-  while (1)
-    {
-      printf ("Enter a Bit-Stream : ");
-      scanf ("%s", bit);
-      getchar ();
-      if (strlen (bit) > 32)
-	{
-	  printf ("Input should be 32 bits...\n\n");
-	  continue;
-	}
-      write (sid, (void *) &bit, strlen (bit) + 1);
-      if (strcmp (bit, "end") == 0)
-	{
-	  printf ("Client terminated...\n");
-	  break;
-	}
-      printf ("\nClient sent %s to the Server\n", bit);
-      read (sid, ans, MAX);
-      printf ("Bit-Stuffed Result received from the server : %s\n\n", ans);
-    }
+  printf ("Enter the IPv4 for process %d : ", getpid ());
+  scanf ("%s", ip);
+  getchar ();
+  write (sid, (void *) &ip, strlen (ip) + 1);
+  printf ("Client sent %s to the server\n", ip);
+  read (sid, (void *) &ans, MAX);
+  printf ("Server response : %s\n\n", ans);
   close (sid);
   return 0;
 }
