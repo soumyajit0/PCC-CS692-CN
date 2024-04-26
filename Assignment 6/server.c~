@@ -54,7 +54,7 @@ main (int ac, char **av)
 	  if (strcmp (ip, "end") == 0)
 	    {
 	      kill (getppid (), SIGINT);
-	      close (cid);
+	      close(cid);
 	      break;
 	    }
 	  printf ("Server received %s from the client\n", ip);
