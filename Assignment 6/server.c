@@ -10,12 +10,22 @@
 
 #include<unistd.h>
 
+#include<signal.h>
+
 #define MAX 100
+
+void
+customHandler (int signum)
+{
+  printf ("Server terminated...\n");
+  exit (0);
+}
 
 int
 main (int ac, char **av)
 {
   struct sockaddr_in saddr, caddr;
+  struct in_addr ipv4;
   char sip_addr[MAX], ip[MAX], ans[MAX];
   if (ac == 1)
     strcpy (sip_addr, "127.0.0.1");
@@ -30,52 +40,42 @@ main (int ac, char **av)
     {
       printf ("Cannot connect to the server...\n");
       close (sid);
-      exit (1);
+      exit (0);
     }
   listen (sid, 5);
-  int len = sizeof (caddr);
-  int cid = accept (sid, (struct sockaddr *) &caddr, &len);
+  signal (SIGINT, customHandler);
   while (1)
     {
-      read (cid, (void *) &ip, MAX);
-      if (strcmp (ip, "end") == 0)
+      int len = sizeof (caddr);
+      int cid = accept (sid, (struct sockaddr *) &caddr, &len);
+      if (fork () == 0)
 	{
-	  printf ("Server terminated...\n");
-	  break;
-	}
-      printf ("Server received %s from the client\n", ip);
-      int i, num = 0;
-      for (i = 0; i < strlen (ip); i++)
-	{
-	  if (ip[i] == '.')
+	  read (cid, (void *) &ip, MAX);
+	  if (strcmp (ip, "end") == 0)
 	    {
-	      if (num >= 0 && num <= 255)
-		num = 0;
-	      else
-		{
-		  strcpy (ans, "NO");
-		  write (cid, (void *) &ans, strlen (ans) + 1);
-		  printf ("Not valid IPv4 address\n\n");
-		  break;
-		}
+	      kill (getppid (), SIGINT);
+	      close(cid);
+	      break;
 	    }
-	  else if (ip[i] >= '0' && ip[i] <= '9')
+	  printf ("Server received %s from the client\n", ip);
+	  if (inet_pton (AF_INET, ip, &ipv4) == 1)
 	    {
-	      num = (num * 10) + (ip[i] - 48);
+	      printf ("Valid IPv4 address\n\n");
+	      strcpy (ans, "YES");
 	    }
 	  else
 	    {
+	      printf ("Not a valid IPv4 address\n\n");
 	      strcpy (ans, "NO");
-	      write (cid, (void *) &ans, strlen (ans) + 1);
-	      printf ("Not valid IPv4 address\n\n");
-	      break;
 	    }
+	  write (cid, (void *) &ans, strlen (ans) + 1);
+	  close (cid);
 	}
-      strcpy (ans, "YES");
-      write (cid, (void *) &ans, strlen (ans) + 1);
-      printf ("Valid IPv4 address\n\n");
+      else
+	{
+	  close (cid);
+	}
     }
   close (sid);
-  close (cid);
   return 0;
 }

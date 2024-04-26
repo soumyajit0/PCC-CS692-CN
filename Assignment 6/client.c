@@ -36,6 +36,11 @@ main (int ac, char **av)
   scanf ("%s", ip);
   getchar ();
   write (sid, (void *) &ip, strlen (ip) + 1);
+  if (strcmp (ip, "end") == 0)
+    {
+      printf ("Client terminated...\n");
+      exit (1);
+    }
   printf ("Client sent %s to the server\n", ip);
   read (sid, (void *) &ans, MAX);
   printf ("Server response : %s\n\n", ans);
