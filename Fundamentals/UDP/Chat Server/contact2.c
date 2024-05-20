@@ -73,6 +73,5 @@ int main(int argc,char **argv)
   pthread_join(t1,NULL);
   pthread_join(t2,NULL);
   close(sid);
-  printf("| Chat Offline |\n");
   return 0;
 }
