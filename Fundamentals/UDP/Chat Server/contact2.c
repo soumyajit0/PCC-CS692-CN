@@ -45,16 +45,13 @@ void *receive(void *args)
 int main(int argc,char **argv)
 {
   char sip_addr[MAX];
-  int port;
   if (argc==1)
   {
     strcpy(sip_addr,"127.0.0.1");
-    port=1234;
   }
   else
   {
     strcpy(sip_addr,argv[1]);
-    port=atoi(argv[2]);
   }
   sid=socket(AF_INET,SOCK_DGRAM,0);
   struct sockaddr_in xaddr,yaddr;
@@ -62,8 +59,8 @@ int main(int argc,char **argv)
   yaddr.sin_family=AF_INET;
   xaddr.sin_addr.s_addr=inet_addr(sip_addr);
   yaddr.sin_addr.s_addr=inet_addr(sip_addr);
-  xaddr.sin_port=htons(port);
-  yaddr.sin_port=htons(port);
+  xaddr.sin_port=htons(1235);
+  yaddr.sin_port=htons(1234);
   bind(sid,(struct sockaddr *)&yaddr,sizeof(yaddr));
   caddr=yaddr;
   printf("| Chat Online |\n");
