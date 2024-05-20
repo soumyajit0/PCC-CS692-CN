@@ -72,5 +72,6 @@ int main(int argc,char **argv)
   pthread_create(&t2,NULL,receive,NULL);
   pthread_join(t1,NULL);
   pthread_join(t2,NULL);
+  close(sid);
   return 0;
 }
