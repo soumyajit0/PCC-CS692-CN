@@ -1,100 +1,100 @@
 #include<stdio.h>
 #include<string.h>
 #include<stdlib.h>
-
 #include<netinet/in.h>
 #include<arpa/inet.h>
-
 #include<sys/types.h>
 #include<sys/socket.h>
-
 #include<unistd.h>
 
 #define MAX 100
 
-char *
-hammingCode (char *data)
-{
-  int m = strlen (data);
-  int i, j, r = 1, k = 0, count = 0, shift = 0;
-  for (i = 0; i < m / 2; i++)
-    {
-      char temp = data[i];
-      data[i] = data[m - 1 - i];
-      data[m - 1 - i] = temp;
-    }
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/ip.h>
+#include <arpa/inet.h>
 
-  while ((1 << r < (m + r + 1)))
-    {
-      r++;
-    }
-
-  char *code = (char *) malloc (sizeof (char) * (m + r + 1));
-  code[m + r] = '\0';
-
-  for (i = 0; i < m + r; i++)
-    {
-      if ((i + 1) & i)
-	code[i] = data[k++];
-      else
-	code[i] = 'r';
-    }
-
-  for (i = 0; i < r; i++)
-    {
-      count = 0;
-      shift = 1 << i;
-      for (j = 1; j <= (m + r); j++)
-	{
-	  if (j & shift)
-	    {
-	      if (code[j - 1] == '1')
-		count++;
-	    }
+void strrev(char *s){
+	int l=strlen(s)-1;
+	int i=0;
+	while(i<l){
+		char t=s[i];
+		s[i]=s[l];
+		s[l]=t;
+		i++;
+		l--;
 	}
-      code[shift - 1] = '0' + (count & 1);
-    }
-  int Hm = strlen (code);
-  for (i = 0; i < Hm / 2; i++)
-    {
-      char temp = code[i];
-      code[i] = code[Hm - 1 - i];
-      code[Hm - 1 - i] = temp;
-    }
-
-  return code;
 }
 
-int
-main (int ac, char **av)
-{
-  struct sockaddr_in saddr, caddr;
-  char sip_addr[MAX], data[MAX], code[MAX];
-  if (ac == 1)
-    strcpy (sip_addr, "127.0.0.1");
-  else
-    strcpy (sip_addr, av[1]);
-  int sid = socket (AF_INET, SOCK_DGRAM, 0);
-  saddr.sin_family = AF_INET;
-  inet_aton (sip_addr, &(saddr.sin_addr));
-  saddr.sin_port = htons (1234);
-  bind (sid, (struct sockaddr *) &saddr, sizeof (saddr));
-  while (1)
-    {
-      int len = sizeof (caddr);
-      recvfrom (sid, (void *) &data, MAX, 0, (struct sockaddr *) &caddr,
-		&len);
-      if (strcmp (data, "end") == 0)
-	{
-	  printf ("Server is terminated...\n");
-	  close (sid);
-	  exit (0);
+void hamming(char *data,char* result){
+	//The data received is assumed to be in 1 based reverse indexing i.e.
+	// data-->  10101011
+	// index--> 87654321
+	bzero(result,sizeof(result));
+	char temp[512]={'\0'};
+	int end;
+	int r=1,m=strlen(data);
+	end=m-1;
+	while((1<<r)<m+r+1)		//This finds number of bits required for this msg len
+		r++;
+	int msglen=m+r,i,j;
+	temp[0]='0';
+
+	for(i=1;i<=msglen;i++){		//we need 1 based indexing and also reverse the data received
+		if((i&(i-1))==0)	// this operation is a easy way to check if a value if power of 2. only power of 2 gives (val bitwise and val-1)==0
+			temp[i]='0';
+		else
+			temp[i]=data[end--];
 	}
-      printf ("Dataword %s received from the client\n", data);
-      strcpy (code, hammingCode (code));
-      sendto (sid, (void *) &code, strlen (code), 0,
-	      (struct sockaddr *) &caddr, sizeof (caddr));
-      printf ("Codeword %s returned to the client\n\n", code);
-    }
-  return 0;
+
+	for(i=1;i<=msglen;i++){
+		if((i&(i-1))==0){	// check for power of 2
+			int onecnt=0;
+			for(j=i+1;j<=msglen;j++){
+				if(j&i)
+					onecnt+= temp[j]=='1'? 1:0;
+				
+			}
+			temp[i]= (onecnt&1)? '1':'0';
+		}
+		
+	}
+	
+	// The temp has our required result, but in 1 based indexing
+	char *final=calloc(msglen+1,1);
+	for(int i=1;i<=msglen;i++)	// copy the result to a 0 based indexing
+		final[i-1]=temp[i];
+		
+	strrev(final);	// reverse the result back to a reverse indexing
+	strcpy(result,final);
+}
+
+void main(int argc,char ** argv){
+	if(argc<2){
+		printf("provide port no!");
+		exit(1);
+	}
+	
+	struct sockaddr_in server,client;
+	server.sin_family=AF_INET;
+	server.sin_port=htons(atoi(argv[1]));
+	server.sin_addr.s_addr=INADDR_ANY;
+	
+	int sockfd=socket(AF_INET,SOCK_DGRAM,0);
+	
+	bind(sockfd,(struct sockaddr*)&server,sizeof(server));
+	
+	socklen_t len=sizeof(client);
+	char buff[512],result[512];
+	while(1){
+		bzero(buff,sizeof(buff));
+		recvfrom(sockfd,buff,sizeof(buff),0,(struct sockaddr*)&client,&len);
+		printf("Data received: %s\n",buff);
+		hamming(buff,result);
+		sendto(sockfd,result,sizeof(result),0,(struct sockaddr*)&client,len);
+		printf("Code word sent: %s\n",result);
+	}
 }
