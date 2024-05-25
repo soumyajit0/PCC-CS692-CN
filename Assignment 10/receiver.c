@@ -12,17 +12,22 @@ int main()
 {
   struct sockaddr_in saddr;
   int sid=socket(AF_INET,SOCK_DGRAM,0);
-  int brd=1;
-  if (setsockopt(sid,SOL_SOCKET,SO_REUSEADDR,&brd,sizeof(brd))!=0)
+  int reuse=1;
+  if (setsockopt(sid,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse))!=0)
   {
     printf("Cannot set socket options...\n");
     close(sid);
     exit(1);
   }
   saddr.sin_family=AF_INET;
-  saddr.sin_addr.s_addr=htonl(INADDR_BROADCAST);
+  saddr.sin_addr.s_addr=htonl(INADDR_ANY);
   saddr.sin_port=htons(1234);
-  bind(sid,(struct sockaddr *)&saddr,sizeof(saddr));
+  if(bind(sid,(struct sockaddr *)&saddr,sizeof(saddr))!=0)
+  {
+    printf("Cannot bind to server...\n");
+    close(sid);
+    exit(1);
+  }
   printf("| Receiver Live |\n");
   while(1)
   {
