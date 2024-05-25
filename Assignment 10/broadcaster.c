@@ -22,7 +22,6 @@ int main()
   saddr.sin_family=AF_INET;
   saddr.sin_addr.s_addr=htonl(INADDR_BROADCAST);
   saddr.sin_port=htons(1234);
-  bind(sid,(struct sockaddr *)&saddr,sizeof(saddr));
   printf("| Broadcaster Live |\n");
   while(1)
   {
