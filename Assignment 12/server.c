@@ -1,98 +1,89 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <pthread.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <time.h>
-#include <unistd.h>
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+#include<sys/socket.h>
+#include<unistd.h>
+#include<fcntl.h>
+#include<arpa/inet.h>
+#include<netinet/in.h>
+#include<time.h>
+#include<pthread.h>
 
-#define SIZE 512
-#define TIMEOUT 4
-#define error(msg) {perror(msg);printf("\n");exit(1);}
+#define MAX 100
 
-int sockfd;
-typedef struct
+struct frame_struct
 {
   unsigned int seq_num;
-  char data[SIZE];
-} Frame;
+  char frame_body[MAX];
+};
 
-void *
-receiver (void *arg)
+void *rcv(void *args)
 {
-  int seq_no = 0, ack_no = 1;
-  int newfd = *(int *) arg;
-  Frame frame;
-  srand (time (NULL));
-
-  while (seq_no < 5)
+  int cid=*(int *)args;
+  int seq_rcv,ack_no=1;
+  struct frame_struct frame;
+  while(1)
+  {
+    recv(cid,(void *)&frame,sizeof(frame),0);
+    seq_rcv=frame.seq_num;
+    if (seq_rcv!=ack_no-1)
     {
-      recv (newfd, &frame, sizeof (frame), 0);
-      int seq_recv = frame.seq_num;
-      if (seq_recv != seq_no)
-	{
-	  printf ("\nDuplicate frame %d received..\n", seq_recv);
-	  int t = seq_recv + 1;
-	  send (newfd, &t, sizeof (t), 0);
-	}
-      else
-	{
-	  int delay = rand () % 7 + 1;
-	  printf ("\nFrame %d Received.. Will acknowledge after %d seconds\n",
-		  seq_no, delay);
-	  sleep (delay);
-	  printf ("Sending acknowledgement for %d\n", ack_no - 1);
-	  send (newfd, &ack_no, sizeof (int), 0);
-	  seq_no++;
-	  ack_no++;
-	}
-
-
+      printf("\nReceived DUPLICATE frame:%d\n",seq_rcv);
+      send(cid,(void *)&ack_no,sizeof(ack_no),0);
+      printf("\nAcknowledgement %d sent\n",ack_no);
     }
-
+    else
+    {
+      printf("\nReceived Sequence No.:%d\n",seq_rcv);
+      int delay=rand()%5+1;
+      sleep(delay);
+      send(cid,(void *)&ack_no,sizeof(ack_no),0);
+      printf("\nAcknowledgement %d sent\n",ack_no++);
+    }
+  }
+  pthread_exit(NULL);
 }
 
-void
-main (int argc, char **argv)
+int main(int argc,char **argv)
 {
-  if (argc < 2)
-    {
-      printf ("Provide port!\n");
-      exit (1);
-    }
-
-  struct sockaddr_in server = {
-    .sin_family = AF_INET,
-    .sin_port = htons (atoi (argv[1])),
-    .sin_addr.s_addr = INADDR_ANY,
-  };
-
-  struct sockaddr_in client;
-  int sockfd = socket (AF_INET, SOCK_STREAM, 0);
-  if (sockfd < 0)
-    error ("socket creation failed");
-
-  int reuse = 1;
-  int res =
-    setsockopt (sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof (int));
-  if (res < 0)
-    error ("Setsockopt Failed!");
-
-  res = bind (sockfd, (struct sockaddr *) &server, sizeof (server));
-  if (res < 0)
-    error ("Failed to bind!");
-  listen (sockfd, 2);
-  printf ("\nListening for connections..\n");
-  socklen_t len = sizeof (client);
-  int newfd = accept (sockfd, (struct sockaddr *) &client, &len);
-  printf ("Connection accepted..\n");
-  pthread_t recv_th;
-
-  int seq_no = 0, ack_no = 0;
-  pthread_create (&recv_th, NULL, receiver, &newfd);
-
-  pthread_exit (NULL);
+  if(argc<1)
+  {
+    printf("Please provide a Port no.\n");
+    exit(1);
+  }
+  int port=atoi(argv[1]);
+  int sid=socket(AF_INET,SOCK_STREAM,0);
+  if(sid<0)
+  {
+    printf("Error while creating Socket...\n");
+    exit(1);
+  }
+  struct sockaddr_in saddr,caddr;
+  int reuse=1;
+  if(setsockopt(sid,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse))<0)
+  {
+    printf("Cannot set Socket options...\n");
+    close(sid);
+    exit(1);
+  }
+  saddr.sin_family=AF_INET;
+  saddr.sin_addr.s_addr=INADDR_ANY;
+  saddr.sin_port=htons(port);
+ if(bind(sid,(struct sockaddr*)&saddr,sizeof(saddr))<0)
+ {
+  printf("Cannot bind to server...\n");
+  close(sid);
+  exit(1);
+ }
+ printf("bind: Success\n");
+ listen(sid,5);
+ printf("\nListening\n");
+ int len=sizeof(caddr);
+ int cid=accept(sid,(struct sockaddr*)&caddr,&len);
+ printf("\nAccepted\n");
+ pthread_t t;
+ pthread_create(&t,NULL,&rcv,(void *)&cid);
+ pthread_join(t,NULL);
+ close(sid);
+ return 0;
 }
