@@ -10,7 +10,7 @@
 
 int main()
 {
-  struct sockaddr_in saddr;
+  struct sockaddr_in saddr,caddr;
   int sid=socket(AF_INET,SOCK_DGRAM,0);
   int reuse=1;
   if (setsockopt(sid,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse))!=0)
@@ -29,11 +29,11 @@ int main()
     exit(1);
   }
   printf("| Receiver Live |\n");
+  int len=sizeof(caddr);
   while(1)
   {
     char message[MAX];
-    int len=sizeof(saddr);
-    recvfrom(sid,(void *)&message,MAX,0,(struct sockaddr *)&saddr,&len);
+    recvfrom(sid,(void *)&message,MAX,0,(struct sockaddr *)&caddr,&len);
     if (strcmp(message,"QUIT")==0)
     {
       printf("Receiver terminated...\n");
